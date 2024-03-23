@@ -1,7 +1,7 @@
 --@name Nothing,Nothing.
 --@author [TW]Rain_bob
 --@server
-local holo=hologram.create(chip():getPos(),Angle(),"models/props_c17/oildrum001.mdl")
+local holo=hologram.create(chip():getPos(),Angle(),"models/props_wasteland/medbridge_base01.mdl")
 holo:setMaterial("null")
 holo:setNoDraw(true)
 timer.create("spead vfire",0.05,0,function()
