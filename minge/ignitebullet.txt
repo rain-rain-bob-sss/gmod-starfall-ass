@@ -1,0 +1,149 @@
+--@name
+--@author
+--@server
+    local timers={}
+    local first=false
+    timerex=class("timerex")
+    function timerex:initialize(name,time,times,func)
+        if(not first)then
+            first=true
+        end
+        timers[name]=self
+        self.name=name
+        self.time=time
+        self.nexttime=timer.curtime()+time
+        self.func=func
+        self.remain=times or nil
+        self.stop=false
+    end
+    function timerex:check()
+        if(self.remain~=nil)then
+            if(self.remain<1)then
+                timers[self.name]=nil
+                self=nil
+                --print("noo")
+                return false
+            end
+            self.remain=self.remain-1
+        end
+        return true
+    end
+    function timerex:destory()
+        timers[self.name]=nil
+        self=nil
+    end
+    function timerex:stop()
+        self.stop=true
+    end
+    function timerex:start()
+        self.stop=false
+    end
+    function timerex:think()
+        if(timers[self.name])then
+            if(self.nexttime<=timer.curtime())then
+                if(self:check() and (not self.stop))then
+                    self.nexttime=self.time+timer.curtime()
+                    local r=self.func(self.remain)
+                    if(r==true)then
+                        self:destory()
+                        self.func=function() end
+                    end
+                end
+            end
+            --print'e'
+        end
+        --print(self.nexttime<timer.curtime())
+    end
+    local funcs = {}
+    function funcs.simpletime(time,func)
+        local timerex = timerex:new(math.random(-9999,9999).."ye"..math.random(-500,500),time,1,func)
+        return timerex
+    end
+    function funcs.advtime(name,time,times,func)
+        local te = timerex:new(name,time,times,func)
+        if(timers[name])then
+            timers[name]=te
+        end
+        return te
+    end
+    function funcs.remove(name)
+        if(timers[name])then
+            --print("ok")
+            timers[name]:destory()
+        end
+    end
+    function funcs.getTbl()
+        return timers
+    end
+    function funcs.dohook()
+        hook.add("think","timerexthink",function()
+            for i,v in pairs(timers)do
+                if(v)then
+                    xpcall(function()
+                        local e=hook.run("TimerEXShouldRun",v)
+                        if(e==false)then return end
+                        v:think()
+                        --print(v)
+                        hook.run("TimerEXThink",v)
+                    end,function(e,st)
+                        --print(e,st)
+                        hook.run("TimerEXERROR",v,e,st)
+                    end)
+                end
+            end
+            --print("noo2")
+        end)
+    end
+    ft = timer.frametime
+    ct=timer.curtime
+    function funcs.frametime()
+        return ft()
+    end
+    function funcs.curtime()
+        return ct()
+    end
+local time=funcs
+function firebulletreflect(e,at,d,s,dmg)
+    function fbr(a,d,s)
+        chip():fireBullets({
+            Attacker=a,
+            Damage=0,
+            Distance=114514,
+            Callback=function(a,t,d)
+                --if(not t.Entity:isValid())then
+                    local normal = t.HitNormal
+                    --local rotatednormal = normal:rotateAroundAxis(normal,180)
+                    --time.simpletime(0.001,function()
+                        local holo=hologram.create(t.HitPos,normal:getAngle(),"models/props_c17/oildrum001.mdl")
+                        holo:setMaterial("null")
+                        holo:setNoDraw(true)
+                        local len=holo:obbMaxs():getLength()
+                        holo:ignite(20,len)
+                        if(isValid(t.Entity))then
+                            if(t.Entity:getClass()=="prop_physics" or t.Entity:getClass()=="player" or t.Entity:isNPC())then
+                                holo:setModel(t.Entity:getModel())
+                                holo:setParent(t.Entity)
+                                holo:addEffects(EF.BONEMERGE)
+                                local len=holo:obbMaxs():getLength()
+                                holo:ignite(40,len)
+                            end
+                        end
+                        time.simpletime(40,function()
+                            holo:remove()
+                        end)
+                    --end)
+                --end
+            end,
+            Dir=d,
+            Src=s,
+            IgnoreEntity=a,
+            Force=0,Spread=Vector(0.01,0.01),Num=num,TracerName="tooltracer"
+        })
+    end
+    fbr(at,d,s)
+end
+hook.add("entityfirebullets","reflect",function(ent,data)
+    if(data.Distance==114514)then return end
+    if(data.Attacker!=owner())then return end
+    firebulletreflect(ent,data.Attacker,data.Dir,data.Src,data.Damage)
+end)
